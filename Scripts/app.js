@@ -1,33 +1,124 @@
-:root{
-  --bg:#f6f7fb;
-  --card:#ffffff;
-  --muted:#6b7280;
-  --accent:#1f6feb;
-  --danger:#ef4444;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+// Ponto único de configuração: API que lida com criação/fechamento de issues e likes
+const API_BASE = '/api/github';
+
+const nameInput = document.getElementById('name');
+const commentInput = document.getElementById('comment');
+const btnPublish = document.getElementById('btn-publish');
+const commentsDiv = document.getElementById('comments');
+const statusDiv = document.getElementById('status');
+
+function setStatus(msg, err=false){
+  statusDiv.textContent = msg || '';
+  statusDiv.style.color = err ? 'var(--danger)' : 'var(--muted)';
 }
 
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;background:var(--bg);color:#0f172a}
-.container{max-width:760px;margin:28px auto;padding:20px}
-.header{text-align:center;margin-bottom:18px}
-#top-photo{width:100%;height:220px;object-fit:cover;border-radius:8px;box-shadow:0 4px 14px rgba(2,6,23,0.08)}
-h1{margin:12px 0 6px 0;font-size:24px}
-.hint{color:var(--muted);font-size:13px;margin:0}
+async function listComments(){
+  setStatus('Carregando comentários...');
+  try{
+    const res = await fetch(`${API_BASE}/list`);
+    if (!res.ok) throw new Error('Erro ao carregar comentários');
+    const data = await res.json();
+    renderComments(data);
+    setStatus('');
+  }catch(err){
+    setStatus(err.message, true);
+  }
+}
 
-.token-section, .form-section{background:var(--card);padding:14px;border-radius:8px;margin-top:14px;box-shadow:0 6px 18px rgba(2,6,23,0.04)}
-.token-section input, .form-section input, .form-section textarea{
-  width:100%;padding:10px;border:1px solid #e6e9ef;border-radius:6px;margin-top:6px;margin-bottom:10px;font-size:14px
+function renderComments(items){
+  commentsDiv.innerHTML = '';
+  if (!items.length){
+    commentsDiv.innerHTML = '<div class="comment-card"><div class="comment-main"><div class="comment-meta">Nenhum comentário.</div></div></div>';
+    return;
+  }
+
+  items.sort((a,b)=> new Date(b.created_at) - new Date(a.created_at));
+  items.forEach(item=>{
+    const card = document.createElement('div');
+    card.className = 'comment-card';
+
+    const main = document.createElement('div');
+    main.className = 'comment-main';
+
+    const meta = document.createElement('div');
+    meta.className = 'comment-meta';
+    meta.textContent = `${item.title.replace(' — comentário','')} • ${new Date(item.created_at).toLocaleString()}`;
+
+    const body = document.createElement('div');
+    body.className = 'comment-body';
+    body.textContent = item.body || '';
+
+    main.appendChild(meta);
+    main.appendChild(body);
+
+    const actions = document.createElement('div');
+    actions.className = 'comment-actions';
+
+    const likeBtn = document.createElement('button');
+    likeBtn.className = 'like-btn';
+    likeBtn.textContent = 'Curtir';
+    likeBtn.onclick = ()=> toggleLike(item.number);
+
+    const likeCount = document.createElement('span');
+    likeCount.className = 'like-count';
+    likeCount.id = `like-${item.number}`;
+    likeCount.textContent = item.likes || 0;
+
+    actions.appendChild(likeBtn);
+    actions.appendChild(likeCount);
+
+    card.appendChild(main);
+    card.appendChild(actions);
+    commentsDiv.appendChild(card);
+  });
 }
-.token-section button, .form-section button{
-  background:var(--accent);color:white;border:0;padding:10px 12px;border-radius:6px;cursor:pointer;font-weight:600
+
+async function postComment(name, body){
+  setStatus('Publicando comentário...');
+  try{
+    const res = await fetch(`${API_BASE}/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, body })
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error('Erro ao publicar: ' + txt);
+    }
+    nameInput.value = '';
+    commentInput.value = '';
+    setStatus('Publicado.');
+    listComments();
+  }catch(err){
+    setStatus(err.message, true);
+  }
 }
-.token-section .danger, .danger{background:var(--danger);margin-left:8px}
-.comments-section{margin-top:16px}
-.comments-list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
-.comment-card{background:var(--card);padding:12px;border-radius:8px;box-shadow:0 4px 12px rgba(2,6,23,0.04);display:flex;justify-content:space-between;align-items:flex-start}
-.comment-main{max-width:82%}
-.comment-meta{color:var(--muted);font-size:13px;margin-bottom:6px}
-.comment-body{white-space:pre-wrap;font-size:15px;color:#0b1220}
-.comment-actions button{background:#efefef;border:0;padding:6px 10px;border-radius:6px;cursor:pointer;font-weight:600}
-.status{margin-top:10px;color:var(--muted);font-size:13px}
+
+async function toggleLike(issueNumber){
+  try{
+    const res = await fetch(`${API_BASE}/like`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ issueNumber })
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error('Erro ao curtir: ' + txt);
+    }
+    const data = await res.json();
+    const el = document.getElementById(`like-${issueNumber}`);
+    if (el) el.textContent = data.likes;
+  }catch(err){
+    setStatus(err.message, true);
+  }
+}
+
+btnPublish.addEventListener('click', ()=>{
+  const name = nameInput.value.trim() || 'Anônimo';
+  const body = commentInput.value.trim();
+  if (!body) { setStatus('Escreva um comentário.', true); return; }
+  postComment(name, body);
+});
+
+// inicializa
+listComments();
