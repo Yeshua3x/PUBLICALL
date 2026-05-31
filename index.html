@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Comentários via GitHub Issues</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <img id="top-photo" src="public/photo.jpg" alt="Foto do topo" />
+      <h1>Seção de Comentários</h1>
+      <p class="hint">Cole seu GitHub Personal Access Token para publicar e remover comentários.</p>
+    </header>
+
+    <section class="token-section">
+      <label for="token"><strong>GitHub Token</strong></label>
+      <input id="token" type="password" placeholder="ghp_..." />
+      <button id="btn-save-token">Usar token (salva na sessão)</button>
+      <button id="btn-clear-token" class="danger">Remover token</button>
+    </section>
+
+    <section class="form-section">
+      <label for="name"><strong>Nome</strong></label>
+      <input id="name" type="text" placeholder="Seu nome" />
+
+      <label for="comment"><strong>Comentário</strong></label>
+      <textarea id="comment" rows="4" placeholder="Escreva seu comentário..."></textarea>
+
+      <button id="btn-publish">Publicar comentário</button>
+    </section>
+
+    <section class="comments-section">
+      <h2>Comentários</h2>
+      <div id="comments" class="comments-list">
+        <!-- Comentários serão inseridos aqui -->
+      </div>
+      <div id="status" class="status"></div>
+    </section>
+  </main>
+
+  <script src="scripts/app.js"></script>
+</body>
+</html>
